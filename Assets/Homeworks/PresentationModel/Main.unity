@@ -220,7 +220,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 999330331}
-  - component: {fileID: 999330330}
   - component: {fileID: 999330329}
   m_Layer: 0
   m_Name: GameRoot
@@ -247,24 +246,19 @@ MonoBehaviour:
   autoInjectGameObjects: []
   _background: {fileID: 21300000, guid: 1ef35281159084840a18dc421a668166, type: 3}
   _header: {fileID: 21300000, guid: 1e571250164374908baacaaf3c3e0230, type: 3}
+  _sunrays: {fileID: 21300000, guid: f0a3067b052af4ab088c530612a93f9d, type: 3}
   _portrait: {fileID: 21300000, guid: e57e7992cc20d4746ae7dc3f8d5057cc, type: 3}
-  _progressFill: {fileID: 21300000, guid: ebca5e0b7178447bea6a7fe825585b0a, type: 3}
+  _closeButton: {fileID: 21300000, guid: a9c87529549274a638c03851dc14acdb, type: 3}
+  _ava1: {fileID: 21300000, guid: 954d79ad0f5124da59b33552ab47a641, type: 3}
+  _ava2: {fileID: 21300000, guid: 7c0892898786946a98a1057c9873611a, type: 3}
+  _ava3: {fileID: 21300000, guid: a564258f7260e47d58e9ee37e2a3abb7, type: 3}
+  _point: {fileID: 21300000, guid: 5620b96fe26db46ef9718bca857d7735, type: 3}
+  _progressBarBackground: {fileID: 21300000, guid: 65f1f710434f140bcaddbfb0bb973ab2, type: 3}
+  _progressBarCompleted: {fileID: 21300000, guid: ebca5e0b7178447bea6a7fe825585b0a, type: 3}
+  _progressBarNotCompleted: {fileID: 21300000, guid: c9ea6483ca2494ae892f993fec2cb4a6, type: 3}
   _buttonActive: {fileID: 21300000, guid: cf4c106fc0fd9489580b9e716e4eed17, type: 3}
   _buttonInactive: {fileID: 21300000, guid: 9ef0c11205b6f41a88353f491a8396d1, type: 3}
-  _closeButton: {fileID: 21300000, guid: a9c87529549274a638c03851dc14acdb, type: 3}
-  _popupView: {fileID: 999330330}
---- !u!114 &999330330
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 999330328}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e7fa849483dba48bb911c504ddcd5eb2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::Homework.PresentationModel.PlayerPopupView
+  _font: {fileID: 12800000, guid: cf8f1e5ed4a774a22a5bc69c8a02e011, type: 3}
 --- !u!4 &999330331
 Transform:
   m_ObjectHideFlags: 0

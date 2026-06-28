@@ -33,6 +33,8 @@ namespace Homework.PresentationModel
 
         void OnAddExperienceClicked();
 
+        void OnIconSelected(Sprite icon);
+
         void OnCloseClicked();
     }
 }

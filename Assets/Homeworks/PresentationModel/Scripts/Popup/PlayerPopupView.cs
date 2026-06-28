@@ -1,18 +1,23 @@
+using System;
 using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
-using VContainer;
+using UnityEngine.EventSystems;
+using VContainer.Unity;
 
 namespace Homework.PresentationModel
 {
-    public sealed class PlayerPopupView : MonoBehaviour
+    // Plain C# (no MonoBehaviour): builds the popup uGUI in code, binds to the
+    // presentation model via UniRx, and exposes its root for the PopupManager.
+    public sealed class PlayerPopupView : IInitializable, IDisposable
     {
-        private IPlayerPopupPresentationModel _model;
-        private PopupVisualConfig _config;
-
+        private readonly IPlayerPopupPresentationModel _model;
+        private readonly PopupVisualConfig _config;
         private readonly CompositeDisposable _disposables = new CompositeDisposable();
         private readonly CompositeDisposable _statsDisposables = new CompositeDisposable();
 
+        private GameObject _popup;
+        private Canvas _canvas;
         private Image _portrait;
         private Text _nameText;
         private Text _descriptionText;
@@ -20,27 +25,38 @@ namespace Homework.PresentationModel
         private Text _experienceText;
         private Image _progressFill;
         private Button _levelUpButton;
-        private Transform _statsContainer;
+        private Image _levelUpImage;
+        private RectTransform _statsContainer;
 
-        [Inject]
-        public void Construct(IPlayerPopupPresentationModel model, PopupVisualConfig config)
+        public GameObject Popup => this._popup;
+        public Canvas Canvas => this._canvas;
+
+        public PlayerPopupView(IPlayerPopupPresentationModel model, PopupVisualConfig config)
         {
             this._model = model;
             this._config = config;
+        }
 
+        public void Initialize()
+        {
             this.BuildUI();
             this.Bind();
             this._model.StatsChanged += this.OnStatsChanged;
             this.OnStatsChanged();
         }
 
-        private void OnDestroy()
+        public void Dispose()
         {
             this._disposables.Dispose();
             this._statsDisposables.Dispose();
             if (this._model != null)
             {
                 this._model.StatsChanged -= this.OnStatsChanged;
+            }
+
+            if (this._canvas != null)
+            {
+                UnityEngine.Object.Destroy(this._canvas.gameObject);
             }
         }
 
@@ -52,176 +68,190 @@ namespace Homework.PresentationModel
             this._model.LevelText.Subscribe(v => this._levelText.text = v).AddTo(this._disposables);
             this._model.ExperienceText.Subscribe(v => this._experienceText.text = v).AddTo(this._disposables);
             this._model.ExperienceProgress.Subscribe(v => this._progressFill.fillAmount = v).AddTo(this._disposables);
-            this._model.CanLevelUp.Subscribe(v => this._levelUpButton.interactable = v).AddTo(this._disposables);
+            this._model.CanLevelUp.Subscribe(this.OnCanLevelUpChanged).AddTo(this._disposables);
+        }
+
+        private void OnCanLevelUpChanged(bool canLevelUp)
+        {
+            this._levelUpButton.interactable = canLevelUp;
+            if (this._levelUpImage != null && this._config.ButtonActive != null && this._config.ButtonInactive != null)
+            {
+                this._levelUpImage.sprite = canLevelUp ? this._config.ButtonActive : this._config.ButtonInactive;
+            }
+
+            if (this._config.ProgressBarCompleted != null && this._config.ProgressBarNotCompleted != null)
+            {
+                this._progressFill.sprite = canLevelUp
+                    ? this._config.ProgressBarCompleted
+                    : this._config.ProgressBarNotCompleted;
+            }
         }
 
         private void OnStatsChanged()
         {
             this._statsDisposables.Clear();
-
             for (int i = 0; i < this._statsContainer.childCount; i++)
             {
-                Destroy(this._statsContainer.GetChild(i).gameObject);
+                UnityEngine.Object.Destroy(this._statsContainer.GetChild(i).gameObject);
             }
 
             float y = 0f;
             foreach (var stat in this._model.Stats)
             {
-                var text = this.CreateText(this._statsContainer, "Stat", string.Empty, 20);
-                var rect = text.rectTransform;
-                rect.anchoredPosition = new Vector2(0, y);
-                rect.sizeDelta = new Vector2(600, 28);
+                var row = this.Make(this._statsContainer, "Stat", new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), new Vector2(0, y), new Vector2(640, 30));
+                var point = this.CreateImage(this.Make(row, "Point", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-280, 0), new Vector2(26, 26)), this._config.Point);
+                point.preserveAspect = true;
+                var value = this.CreateText(this.Make(row, "Value", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(20, 0), new Vector2(560, 30)), string.Empty, 22);
 
-                stat.Name
-                    .CombineLatest(stat.Value, (name, value) => $"{name}: {value}")
-                    .Subscribe(v => text.text = v)
+                stat.Name.CombineLatest(stat.Value, (n, v) => $"{n}: {v}")
+                    .Subscribe(v => value.text = v)
                     .AddTo(this._statsDisposables);
 
-                y -= 30f;
+                y -= 34f;
             }
         }
 
         private void BuildUI()
         {
             var canvasGo = new GameObject("PopupCanvas");
-            canvasGo.transform.SetParent(this.transform, false);
-            var canvas = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvasGo.AddComponent<CanvasScaler>();
+            this._canvas = canvasGo.AddComponent<Canvas>();
+            this._canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(760, 1100);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 1f;
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            if (Object.FindObjectsByType<UnityEngine.EventSystems.EventSystem>(FindObjectsSortMode.None).Length == 0)
+            if (UnityEngine.Object.FindObjectsByType<EventSystem>(FindObjectsSortMode.None).Length == 0)
             {
                 var es = new GameObject("EventSystem");
-                es.AddComponent<UnityEngine.EventSystems.EventSystem>();
-                es.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
+                es.AddComponent<EventSystem>();
+                es.AddComponent<StandaloneInputModule>();
             }
 
-            var popup = this.CreateImage(canvasGo.transform, "Background", this._config.Background);
-            var popupRect = popup.rectTransform;
-            popupRect.sizeDelta = new Vector2(700, 680);
-            popup.color = this._config.Background != null ? Color.white : new Color(0.12f, 0.13f, 0.16f, 0.95f);
+            // Root popup (centered). This is what the PopupManager shows/hides.
+            this._popup = new GameObject("Popup", typeof(RectTransform));
+            this._popup.transform.SetParent(canvasGo.transform, false);
+            var popupRect = this._popup.GetComponent<RectTransform>();
+            this.Set(popupRect, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(760, 1100));
+            var popupImage = this._popup.AddComponent<Image>();
+            popupImage.sprite = this._config.Background;
+            popupImage.type = this._config.Background != null ? Image.Type.Sliced : Image.Type.Simple;
+            popupImage.color = this._config.Background != null ? Color.white : new Color(0.12f, 0.13f, 0.16f, 0.97f);
 
-            var header = this.CreateImage(popupRect, "Header", this._config.Header);
-            header.rectTransform.anchorMin = new Vector2(0.5f, 1f);
-            header.rectTransform.anchorMax = new Vector2(0.5f, 1f);
-            header.rectTransform.anchoredPosition = new Vector2(0, -40);
-            header.rectTransform.sizeDelta = new Vector2(700, 80);
-            this._levelText = this.CreateText(header.rectTransform, "LevelText", "Level 1", 26);
-            this._levelText.rectTransform.sizeDelta = new Vector2(700, 80);
+            this.CreateImage(this.Top(popupRect, "Header", new Vector2(0, -70), new Vector2(760, 130)), this._config.Header);
+            this._levelText = this.CreateText(this.Top(popupRect, "LevelText", new Vector2(0, -70), new Vector2(700, 80)), "Level 1", 30);
             this._levelText.alignment = TextAnchor.MiddleCenter;
 
-            this._portrait = this.CreateImage(popupRect, "Portrait", this._config.Portrait);
-            this._portrait.rectTransform.anchorMin = new Vector2(0.5f, 1f);
-            this._portrait.rectTransform.anchorMax = new Vector2(0.5f, 1f);
-            this._portrait.rectTransform.anchoredPosition = new Vector2(0, -170);
-            this._portrait.rectTransform.sizeDelta = new Vector2(160, 160);
+            this.CreateImage(this.Top(popupRect, "Sunrays", new Vector2(0, -280), new Vector2(400, 400)), this._config.Sunrays);
+            this._portrait = this.CreateImage(this.Top(popupRect, "Portrait", new Vector2(0, -280), new Vector2(230, 230)), this._config.Portrait);
 
-            this._nameText = this.CreateText(popupRect, "NameText", string.Empty, 30);
-            this._nameText.rectTransform.anchoredPosition = new Vector2(0, -290);
-            this._nameText.rectTransform.sizeDelta = new Vector2(680, 40);
+            this.AvatarButton(this.Top(popupRect, "Ava1", new Vector2(-150, -450), new Vector2(86, 86)), this._config.Ava1);
+            this.AvatarButton(this.Top(popupRect, "Ava2", new Vector2(0, -450), new Vector2(86, 86)), this._config.Ava2);
+            this.AvatarButton(this.Top(popupRect, "Ava3", new Vector2(150, -450), new Vector2(86, 86)), this._config.Ava3);
+
+            this._nameText = this.CreateText(this.Top(popupRect, "NameText", new Vector2(0, -555), new Vector2(700, 48)), string.Empty, 30);
             this._nameText.alignment = TextAnchor.MiddleCenter;
-
-            this._descriptionText = this.CreateText(popupRect, "DescriptionText", string.Empty, 18);
-            this._descriptionText.rectTransform.anchoredPosition = new Vector2(0, -340);
-            this._descriptionText.rectTransform.sizeDelta = new Vector2(680, 30);
+            this._descriptionText = this.CreateText(this.Top(popupRect, "DescriptionText", new Vector2(0, -608), new Vector2(700, 32)), string.Empty, 19);
             this._descriptionText.alignment = TextAnchor.MiddleCenter;
 
             var statsGo = new GameObject("Stats", typeof(RectTransform));
             statsGo.transform.SetParent(popupRect, false);
-            this._statsContainer = statsGo.transform;
-            ((RectTransform)this._statsContainer).anchoredPosition = new Vector2(0, -440);
-            ((RectTransform)this._statsContainer).sizeDelta = new Vector2(680, 120);
+            this._statsContainer = statsGo.GetComponent<RectTransform>();
+            this.Set(this._statsContainer, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -660), Vector2.zero);
 
-            var progressBg = this.CreateImage(popupRect, "ProgressBg", null);
-            progressBg.rectTransform.anchoredPosition = new Vector2(0, -560);
-            progressBg.rectTransform.sizeDelta = new Vector2(600, 30);
-            progressBg.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+            var barBgRect = this.Top(popupRect, "ProgressBarBg", new Vector2(0, -870), new Vector2(620, 40));
+            var barBg = this.CreateImage(barBgRect, this._config.ProgressBarBackground);
+            barBg.color = this._config.ProgressBarBackground != null ? Color.white : new Color(0.18f, 0.18f, 0.2f, 1f);
+            barBg.type = this._config.ProgressBarBackground != null ? Image.Type.Sliced : Image.Type.Simple;
 
-            this._progressFill = this.CreateImage(progressBg.rectTransform, "ProgressFill", this._config.ProgressBarFill);
-            var fillRect = this._progressFill.rectTransform;
-            fillRect.anchorMin = Vector2.zero;
-            fillRect.anchorMax = Vector2.one;
-            fillRect.offsetMin = Vector2.zero;
-            fillRect.offsetMax = Vector2.zero;
+            var fillRect = this.Make(barBgRect, "Fill", new Vector2(0, 0), new Vector2(1, 1), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            this._progressFill = this.CreateImage(fillRect, this._config.ProgressBarNotCompleted);
             this._progressFill.type = Image.Type.Filled;
             this._progressFill.fillMethod = Image.FillMethod.Horizontal;
-            this._progressFill.color = this._config.ProgressBarFill != null ? Color.white : new Color(0.3f, 0.7f, 0.4f, 1f);
+            this._progressFill.color = this._config.ProgressBarNotCompleted != null ? Color.white : new Color(0.3f, 0.7f, 0.4f, 1f);
 
-            this._experienceText = this.CreateText(popupRect, "ExperienceText", string.Empty, 16);
-            this._experienceText.rectTransform.anchoredPosition = new Vector2(0, -600);
-            this._experienceText.rectTransform.sizeDelta = new Vector2(600, 24);
+            this._experienceText = this.CreateText(this.Top(popupRect, "ExperienceText", new Vector2(0, -918), new Vector2(620, 28)), string.Empty, 18);
             this._experienceText.alignment = TextAnchor.MiddleCenter;
 
-            this._levelUpButton = this.CreateButton(popupRect, "LevelUpButton", "LEVEL UP");
-            var levelUpRect = this._levelUpButton.GetComponent<RectTransform>();
-            levelUpRect.anchoredPosition = new Vector2(110, -660);
-            levelUpRect.sizeDelta = new Vector2(200, 56);
-            this._levelUpButton.onClick.AddListener(() => this._model.OnLevelUpClicked());
+            var levelUpRect = this.Top(popupRect, "LevelUpButton", new Vector2(130, -995), new Vector2(230, 66));
+            this._levelUpButton = this.CreateButton(levelUpRect, "LEVEL UP", this._config.ButtonActive, () => this._model.OnLevelUpClicked());
+            this._levelUpImage = levelUpRect.GetComponent<Image>();
 
-            var addXpButton = this.CreateButton(popupRect, "AddXpButton", "ADD XP");
-            var addXpRect = addXpButton.GetComponent<RectTransform>();
-            addXpRect.anchoredPosition = new Vector2(-110, -660);
-            addXpRect.sizeDelta = new Vector2(200, 56);
-            addXpButton.onClick.AddListener(() => this._model.OnAddExperienceClicked());
+            var addXpRect = this.Top(popupRect, "AddXpButton", new Vector2(-130, -995), new Vector2(230, 66));
+            this.CreateButton(addXpRect, "ADD XP", this._config.ButtonActive, () => this._model.OnAddExperienceClicked());
 
-            var closeButton = this.CreateButton(popupRect, "CloseButton", "X");
-            var closeRect = closeButton.GetComponent<RectTransform>();
-            closeRect.anchorMin = new Vector2(1f, 1f);
-            closeRect.anchorMax = new Vector2(1f, 1f);
-            closeRect.anchoredPosition = new Vector2(-40, -40);
-            closeRect.sizeDelta = new Vector2(50, 50);
-            closeButton.onClick.AddListener(() => this._model.OnCloseClicked());
+            var closeRect = this.Make(popupRect, "CloseButton", new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), new Vector2(-55, -55), new Vector2(64, 64));
+            this.CreateButton(closeRect, "X", this._config.CloseButton, () => this._model.OnCloseClicked());
         }
 
-        private Image CreateImage(Transform parent, string name, Sprite sprite)
+        private void AvatarButton(RectTransform parent, Sprite ava)
+        {
+            var image = this.CreateImage(parent, ava);
+            image.preserveAspect = true;
+            var button = parent.gameObject.AddComponent<Button>();
+            button.onClick.AddListener(() => this._model.OnIconSelected(ava));
+        }
+
+        private RectTransform Top(RectTransform parent, string name, Vector2 pos, Vector2 size)
+        {
+            return this.Make(parent, name, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f), pos, size);
+        }
+
+        private RectTransform Make(RectTransform parent, string name, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 pos, Vector2 size)
         {
             var go = new GameObject(name, typeof(RectTransform));
             go.transform.SetParent(parent, false);
-            var image = go.AddComponent<Image>();
+            var rt = go.GetComponent<RectTransform>();
+            this.Set(rt, anchorMin, anchorMax, pivot, pos, size);
+            return rt;
+        }
+
+        private void Set(RectTransform rt, Vector2 anchorMin, Vector2 anchorMax, Vector2 pivot, Vector2 pos, Vector2 size)
+        {
+            rt.anchorMin = anchorMin;
+            rt.anchorMax = anchorMax;
+            rt.pivot = pivot;
+            rt.anchoredPosition = pos;
+            rt.sizeDelta = size;
+        }
+
+        private Image CreateImage(RectTransform parent, Sprite sprite)
+        {
+            var image = parent.gameObject.AddComponent<Image>();
             image.sprite = sprite;
             image.raycastTarget = sprite != null;
-            if (sprite == null)
-            {
-                image.color = new Color(1, 1, 1, 0);
-            }
-
+            image.type = Image.Type.Simple;
+            image.color = sprite != null ? Color.white : new Color(1, 1, 1, 0);
             return image;
         }
 
-        private Text CreateText(Transform parent, string name, string content, int fontSize)
+        private Text CreateText(RectTransform parent, string content, int fontSize)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var text = go.AddComponent<Text>();
+            var text = parent.gameObject.AddComponent<Text>();
             text.text = content;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            text.color = Color.white;
+            text.font = this._config.Font != null
+                ? this._config.Font
+                : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.color = new Color(0.10f, 0.11f, 0.16f);
             text.fontSize = fontSize;
-            text.rectTransform.sizeDelta = new Vector2(400, 40);
+            text.raycastTarget = false;
             return text;
         }
 
-        private Button CreateButton(Transform parent, string name, string label)
+        private Button CreateButton(RectTransform parent, string label, Sprite sprite, UnityEngine.Events.UnityAction onClick)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var image = go.AddComponent<Image>();
-            image.color = new Color(0.3f, 0.6f, 0.9f, 1f);
-            var button = go.AddComponent<Button>();
+            var image = parent.gameObject.AddComponent<Image>();
+            image.sprite = sprite;
+            image.color = sprite != null ? Color.white : new Color(0.3f, 0.6f, 0.9f, 1f);
+            image.type = sprite != null ? Image.Type.Sliced : Image.Type.Simple;
+            var button = parent.gameObject.AddComponent<Button>();
+            button.onClick.AddListener(onClick);
 
-            var labelGo = new GameObject("Label", typeof(RectTransform));
-            labelGo.transform.SetParent(go.transform, false);
-            var labelText = labelGo.AddComponent<Text>();
-            labelText.text = label;
+            var labelRect = this.Make(parent, "Label", Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            var labelText = this.CreateText(labelRect, label, 22);
             labelText.alignment = TextAnchor.MiddleCenter;
-            labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            labelText.color = Color.white;
-            labelText.fontSize = 22;
-            var labelRect = labelGo.GetComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.sizeDelta = Vector2.zero;
             return button;
         }
     }

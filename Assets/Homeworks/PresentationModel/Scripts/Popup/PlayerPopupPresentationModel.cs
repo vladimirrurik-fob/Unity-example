@@ -60,6 +60,8 @@ namespace Homework.PresentationModel
 
         public void OnAddExperienceClicked() => this._playerLevel.AddExperience(25);
 
+        public void OnIconSelected(Sprite icon) => this._userInfo.ChangeIcon(icon);
+
         public void OnCloseClicked() => this.CloseRequested?.Invoke();
 
         public void Dispose()
