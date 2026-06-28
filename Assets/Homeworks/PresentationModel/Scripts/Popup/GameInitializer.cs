@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lessons.Architecture.PM;
 using UnityEngine;
 using CharacterInfo = Lessons.Architecture.PM.CharacterInfo;
@@ -17,6 +18,8 @@ namespace Homework.PresentationModel
         private readonly IPopupManager _popupManager;
         private readonly PlayerPopupView _view;
         private readonly PopupVisualConfig _config;
+
+        private readonly Dictionary<CharacterStat, int> _upgrades = new Dictionary<CharacterStat, int>();
 
         public GameInitializer(
             UserInfo userInfo,
@@ -44,9 +47,11 @@ namespace Homework.PresentationModel
             this._userInfo.ChangeDescription("Pick an avatar, fill XP, level up");
             this._userInfo.ChangeIcon(this._config.Portrait);
 
-            this._characterInfo.AddStat(new CharacterStat("Damage", 12));
-            this._characterInfo.AddStat(new CharacterStat("Speed", 7));
-            this._characterInfo.AddStat(new CharacterStat("Health", 100));
+            this.AddStat("Damage", 12, 5);
+            this.AddStat("Speed", 7, 2);
+            this.AddStat("Health", 100, 20);
+
+            this._playerLevel.OnLevelUp += this.OnLevelUp;
 
             this._model.Initialize();
 
@@ -67,6 +72,21 @@ namespace Homework.PresentationModel
                 this._popupManager.Show(PopupKey);
                 openButton.SetActive(false);
             });
+        }
+
+        private void AddStat(string name, int baseValue, int perLevelIncrement)
+        {
+            var stat = new CharacterStat(name, baseValue);
+            this._characterInfo.AddStat(stat);
+            this._upgrades[stat] = perLevelIncrement;
+        }
+
+        private void OnLevelUp()
+        {
+            foreach (var pair in this._upgrades)
+            {
+                pair.Key.ChangeValue(pair.Key.Value + pair.Value);
+            }
         }
 
         private GameObject CreateOpenButton(Canvas canvas)
