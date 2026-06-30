@@ -1,3 +1,4 @@
+using Homework.SaveLoad;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
@@ -65,6 +66,30 @@ namespace Homework.PresentationModel
             // Plain-C# view (built by the initializer) + game setup (IStartable).
             builder.Register<PlayerPopupView>(Lifetime.Singleton);
             builder.RegisterEntryPoint<GameInitializer>(Lifetime.Singleton);
+
+            this.ConfigureSaveLoad(builder);
+        }
+
+        // Layered save/load: file repository -> progress holder -> registry of
+        // ISaveLoad adapters -> orchestrating service. Mirrors the lecture's
+        // architecture but with VContainer instead of Zenject and a real file
+        // instead of PlayerPrefs.
+        private void ConfigureSaveLoad(IContainerBuilder builder)
+        {
+            builder.Register<IProgressRepository, FileProgressRepository>(Lifetime.Singleton);
+            builder.Register<IProgressService, ProgressService>(Lifetime.Singleton);
+
+            // Each saveable is registered as ISaveLoad; VContainer resolves the
+            // collection into SaveLoadRegistry.
+            builder.Register<PlayerLevelSaveLoad>(Lifetime.Singleton).AsImplementedInterfaces();
+            builder.Register<UserInfoSaveLoad>(Lifetime.Singleton).AsImplementedInterfaces();
+            builder.Register<CharacterInfoSaveLoad>(Lifetime.Singleton).AsImplementedInterfaces();
+
+            builder.Register<ISaveLoadRegistry, SaveLoadRegistry>(Lifetime.Singleton);
+            builder.Register<ISaveLoadService, SaveLoadService>(Lifetime.Singleton);
+
+            // Humble MonoBehaviour adapter that flushes a save on quit/pause.
+            builder.RegisterComponentInHierarchy<AppQuitSaver>();
         }
     }
 }

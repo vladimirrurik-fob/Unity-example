@@ -34,5 +34,15 @@ namespace Lessons.Architecture.PM
         {
             return this.CurrentExperience == this.RequiredExperience;
         }
+
+        // Restores saved level + experience. Deliberately does NOT raise OnLevelUp
+        // (that would re-apply level-up side-effects like stat progression); it only
+        // notifies that experience changed so bound views refresh.
+        public void Restore(int level, int experience)
+        {
+            this.CurrentLevel = level;
+            this.CurrentExperience = experience;
+            this.OnExperienceChanged?.Invoke(experience);
+        }
     }
 }

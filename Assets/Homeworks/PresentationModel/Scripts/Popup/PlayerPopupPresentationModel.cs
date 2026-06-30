@@ -85,7 +85,9 @@ namespace Homework.PresentationModel
         private void OnNameChanged(string _) => this._name.Value = this._userInfo.Name ?? string.Empty;
         private void OnDescriptionChanged(string _) => this._description.Value = this._userInfo.Description ?? string.Empty;
         private void OnIconChanged(Sprite _) => this._icon.Value = this._userInfo.Icon;
-        private void OnExperienceChanged(int _) => this.RefreshExperience();
+        // Refresh the whole level block (level text + experience) on any XP change,
+        // so a silent Restore() (no OnLevelUp) still fully refreshes the view.
+        private void OnExperienceChanged(int _) => this.RefreshLevel();
         private void OnLevelUp() => this.RefreshLevel();
 
         private void RefreshAll()
