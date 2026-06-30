@@ -1,27 +1,27 @@
-﻿using Code.Infrastructure.Services.Analytic;
-using Code.Infrastructure.Services.SceneLoad;
+using Code.Infrastructure.Services.StateMachine;
 using UnityEngine;
 using VContainer.Unity;
 
 namespace Code.GameApp.Boot
 {
-  public class BootInitializeSystem : IInitializable
-  {
-    private readonly IAnalyticService _analytics;
-    private readonly ISceneLoader _sceneLoader;
+   /// <summary>
+   /// VContainer IInitializable entry point that kicks off the global state
+   /// machine into <see cref="States.BootstrapState"/>. All the real boot work
+   /// (warmup, scene transition) lives in the states, not here.
+   /// </summary>
+   public sealed class BootInitializeSystem : IInitializable
+   {
+      private readonly IGameStateMachine _stateMachine;
 
-    public BootInitializeSystem(IAnalyticService analytics,
-      ISceneLoader sceneLoader)
-    {
-      _analytics = analytics;
-      _sceneLoader = sceneLoader;
-    }
-      
-    public void Initialize()
-    { 
-      _analytics.Warmup();
-      _sceneLoader.LoadScene("1. Level1");
-      Debug.Log("BootInitializeSystem Initialize");
-    }
-  }
+      public BootInitializeSystem(IGameStateMachine stateMachine)
+      {
+         _stateMachine = stateMachine;
+      }
+
+      public void Initialize()
+      {
+         Debug.Log("BootInitializeSystem Initialize");
+         _stateMachine.Enter<States.BootstrapState>();
+      }
+   }
 }
