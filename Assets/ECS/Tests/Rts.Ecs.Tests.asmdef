@@ -1,0 +1,21 @@
+{
+    "name": "Rts.Ecs.Tests",
+    "references": [
+        "Rts.Ecs",
+        "Unity.Entities",
+        "Unity.Transforms",
+        "Unity.Collections",
+        "Unity.Mathematics",
+        "Unity.Burst",
+        "UnityEngine.TestFramework"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": true,
+    "precompiledReferences": ["nunit.framework.dll"],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

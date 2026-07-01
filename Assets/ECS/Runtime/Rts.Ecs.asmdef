@@ -1,0 +1,23 @@
+{
+    "name": "Rts.Ecs",
+    "rootNamespace": "Rts.Ecs",
+    "references": [
+        "Unity.Entities",
+        "Unity.Entities.Graphics",
+        "Unity.Transforms",
+        "Unity.Collections",
+        "Unity.Burst",
+        "Unity.Mathematics",
+        "Unity.Mathematics.Extensions",
+        "Unity.RenderPipelines.Core.Runtime"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": true,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
