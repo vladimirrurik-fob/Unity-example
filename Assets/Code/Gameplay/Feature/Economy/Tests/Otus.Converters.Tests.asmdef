@@ -1,0 +1,20 @@
+{
+    "name": "Otus.Converters.Tests",
+    "rootNamespace": "Otus.Converters.Tests",
+    "references": [
+        "Otus.Converters.Core",
+        "nunit.framework"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

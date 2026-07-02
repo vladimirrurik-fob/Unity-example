@@ -10,12 +10,14 @@ namespace Code.Core.Data
       public WorldData WorldData;
       public PlayerData PlayerData;
       public EnemyData EnemyData;
+      public EconomyData EconomyData;
 
       public PlayerProgress()
       {
          WorldData = new WorldData();
          PlayerData = new PlayerData();
          EnemyData = new EnemyData();
+         EconomyData = new EconomyData();
       }
    }
 

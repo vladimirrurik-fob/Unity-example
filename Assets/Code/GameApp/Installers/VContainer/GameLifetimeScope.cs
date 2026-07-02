@@ -5,6 +5,7 @@ using Code.Gameplay.Feature.Enemy;
 using Code.Gameplay.Feature.Enemy.Factory;
 using Code.Gameplay.Feature.Player;
 using Code.Gameplay.Feature.Player.Behaviours;
+using Code.Gameplay.Feature.Economy;
 using Code.Gameplay.Feature.Scene;
 using Code.Infrastructure.Services._Input;
 using Code.Infrastructure.Services.Analytic;
@@ -62,6 +63,11 @@ namespace Code.GameApp.Installers.VContainer
             builder.RegisterComponentInHierarchy<PlayerHealth>().AsImplementedInterfaces();
          }
 
+         // --- Resource-converter economy (Upgrade Manager homework) ---
+         // Self-contained subsystem: resources, converters, upgrades, MVP UI, and its
+         // own ISaveLoad adapter. Registered here so it coexists with the Level1 shooter.
+         EconomyInstaller.Install(builder);
+
          // --- Entry-point systems (ticked by VContainer's player loop) ---
          builder.UseEntryPoints(entries =>
          {
@@ -69,6 +75,7 @@ namespace Code.GameApp.Installers.VContainer
             entries.Add<EnemySpawnerSystem>();   // IInitializable
             entries.Add<SaveLoadInitSystem>();   // hydrate progress from file on boot
             entries.Add<SaveLoadSystem>();       // wire save/load buttons + apply loaded data
+            entries.Add<EconomyBootstrap>();     // IStartable: build + wire the panel UI + ticker
          });
       }
 
